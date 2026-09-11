@@ -420,7 +420,7 @@ EOF
     cat > entrypoint.sh <<'EOF'
 #!/bin/sh
 /usr/local/bin/xray run -c /etc/xray.json &
-sleep 2
+sleep 3
 exec /usr/local/openresty/bin/openresty -g 'daemon off;'
 EOF
     chmod +x entrypoint.sh
@@ -505,7 +505,7 @@ EOF
     cat > entrypoint.sh <<'EOF'
 #!/bin/sh
 /usr/local/bin/xray run -c /etc/xray.json &
-sleep 2
+sleep 3
 exec envoy -c /etc/envoy.yaml
 EOF
     chmod +x entrypoint.sh
@@ -566,7 +566,7 @@ EOF
     cat > entrypoint.sh <<'EOF'
 #!/bin/sh
 /usr/local/bin/xray run -c /etc/xray.json &
-sleep 2
+sleep 3
 exec haproxy -f /usr/local/etc/haproxy/haproxy.cfg -db
 EOF
     chmod +x entrypoint.sh
@@ -589,46 +589,50 @@ ENTRYPOINT ["/entrypoint.sh"]
 EOF
 
   elif [ "$ENGINE" = "caddy" ]; then
-    cat > Caddyfile <<EOF
+    cat > Caddyfile <<'EOF'
 {
-  admin off
-  auto_https off
+  http_port 8080
+  grace_period 1s
 }
 
 :8080 {
-  route /health {
+  handle_path /health {
     respond "OK\n" 200
   }
 
-  route /trojan-ws* {
+  handle_path /trojan-ws/* {
     reverse_proxy http://127.0.0.1:10001 {
       header_up Host {host}
-      header_up X-Real-IP {remote_host}
+      header_up X-Real-IP {remote_ip}
+      header_up Connection "upgrade"
+      header_up Upgrade "websocket"
       transport http {
         versions 1.1
       }
     }
   }
 
-  route /vless-ws* {
+  handle_path /vless-ws/* {
     reverse_proxy http://127.0.0.1:10002 {
       header_up Host {host}
-      header_up X-Real-IP {remote_host}
+      header_up X-Real-IP {remote_ip}
+      header_up Connection "upgrade"
+      header_up Upgrade "websocket"
       transport http {
         versions 1.1
       }
     }
   }
 
-  route / {
-    respond "$DECOY_HTML" 200 html
+  handle /* {
+    respond "$DECOY_HTML" 200 text/html
   }
 }
 EOF
     cat > entrypoint.sh <<'EOF'
 #!/bin/sh
 /usr/local/bin/xray run -c /etc/xray.json &
-sleep 2
+sleep 3
 exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
 EOF
     chmod +x entrypoint.sh
