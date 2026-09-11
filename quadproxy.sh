@@ -591,7 +591,8 @@ EOF
   elif [ "$ENGINE" = "caddy" ]; then
     cat > Caddyfile <<EOF
 {
-  http_port 8080
+  admin off
+  auto_https off
 }
 
 :8080 {
@@ -679,7 +680,7 @@ EOF
 while true; do
   clear
   echo "============================================"
-  echo "  GCP-XRAY QUAD-PROXY ENGINE DEPLOYER MENU OK "
+  echo "  GCP-XRAY QUAD-PROXY ENGINE DEPLOYER MENU  "
   echo "============================================"
   echo "1) Deploy New GCP-XRAY Service"
   echo "2) List All Services & FULL DETAILS"
