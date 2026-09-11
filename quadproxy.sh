@@ -602,9 +602,7 @@ EOF
   route /trojan-ws* {
     reverse_proxy http://127.0.0.1:10001 {
       header_up Host {host}
-      header_up X-Real-IP {remote_ip}
-      header_up Connection "upgrade"
-      header_up Upgrade "websocket"
+      header_up X-Real-IP {remote_host}
       transport http {
         versions 1.1
       }
@@ -614,9 +612,7 @@ EOF
   route /vless-ws* {
     reverse_proxy http://127.0.0.1:10002 {
       header_up Host {host}
-      header_up X-Real-IP {remote_ip}
-      header_up Connection "upgrade"
-      header_up Upgrade "websocket"
+      header_up X-Real-IP {remote_host}
       transport http {
         versions 1.1
       }
@@ -683,7 +679,7 @@ EOF
 while true; do
   clear
   echo "============================================"
-  echo "  GCP-XRAY QUAD-PROXY ENGINE DEPLOYER MENU  "
+  echo "  GCP-XRAY QUAD-PROXY ENGINE DEPLOYER MENU OK "
   echo "============================================"
   echo "1) Deploy New GCP-XRAY Service"
   echo "2) List All Services & FULL DETAILS"
