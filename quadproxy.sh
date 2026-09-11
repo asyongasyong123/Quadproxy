@@ -419,8 +419,23 @@ http {
 EOF
     cat > entrypoint.sh <<'EOF'
 #!/bin/sh
+set -e
+
+# Start Xray in background
 /usr/local/bin/xray run -c /etc/xray.json &
-sleep 3
+XRAY_PID=$!
+
+# Wait for Xray port to be ready
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+  if nc -z 127.0.0.1 10001; then
+    echo "✅ Xray ready on port 10001"
+    break
+  fi
+  echo "⏳ Waiting Xray... ($i/15)"
+  sleep 1
+done
+
+# Start OpenResty in foreground
 exec /usr/local/openresty/bin/openresty -g 'daemon off;'
 EOF
     chmod +x entrypoint.sh
@@ -430,6 +445,7 @@ FROM alpine:3.20 AS builder
 RUN apk add --no-cache curl unzip ca-certificates
 RUN curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o xray.zip && unzip -q xray.zip xray geosite.dat geoip.dat && chmod +x xray
 FROM openresty/openresty:alpine-fat
+RUN apk add --no-cache netcat-openbsd
 COPY --from=builder /xray /usr/local/bin/xray
 COPY --from=builder /geosite.dat /usr/local/share/xray/
 COPY --from=builder /geoip.dat /usr/local/share/xray/
@@ -504,8 +520,23 @@ static_resources:
 EOF
     cat > entrypoint.sh <<'EOF'
 #!/bin/sh
+set -e
+
+# Start Xray in background
 /usr/local/bin/xray run -c /etc/xray.json &
-sleep 3
+XRAY_PID=$!
+
+# Wait for Xray port to be ready
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+  if nc -z 127.0.0.1 10001; then
+    echo "✅ Xray ready on port 10001"
+    break
+  fi
+  echo "⏳ Waiting Xray... ($i/15)"
+  sleep 1
+done
+
+# Start Envoy in foreground
 exec envoy -c /etc/envoy.yaml
 EOF
     chmod +x entrypoint.sh
@@ -515,6 +546,7 @@ FROM alpine:3.20 AS builder
 RUN apk add --no-cache curl unzip ca-certificates
 RUN curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o xray.zip && unzip -q xray.zip xray geosite.dat geoip.dat && chmod +x xray
 FROM envoyproxy/envoy:v1.31.0
+RUN apt-get update && apt-get install -y --no-install-recommends netcat-openbsd && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /xray /usr/local/bin/xray
 COPY --from=builder /geosite.dat /usr/local/share/xray/
 COPY --from=builder /geoip.dat /usr/local/share/xray/
@@ -565,8 +597,23 @@ backend vless_backend
 EOF
     cat > entrypoint.sh <<'EOF'
 #!/bin/sh
+set -e
+
+# Start Xray in background
 /usr/local/bin/xray run -c /etc/xray.json &
-sleep 3
+XRAY_PID=$!
+
+# Wait for Xray port to be ready
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+  if nc -z 127.0.0.1 10001; then
+    echo "✅ Xray ready on port 10001"
+    break
+  fi
+  echo "⏳ Waiting Xray... ($i/15)"
+  sleep 1
+done
+
+# Start HAProxy in foreground
 exec haproxy -f /usr/local/etc/haproxy/haproxy.cfg -db
 EOF
     chmod +x entrypoint.sh
@@ -576,6 +623,7 @@ FROM alpine:3.20 AS builder
 RUN apk add --no-cache curl unzip ca-certificates
 RUN curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o xray.zip && unzip -q xray.zip xray geosite.dat geoip.dat && chmod +x xray
 FROM haproxy:2.8-alpine
+RUN apk add --no-cache netcat-openbsd
 COPY --from=builder /xray /usr/local/bin/xray
 COPY --from=builder /geosite.dat /usr/local/share/xray/
 COPY --from=builder /geoip.dat /usr/local/share/xray/
@@ -592,7 +640,6 @@ EOF
     cat > Caddyfile <<'EOF'
 {
   http_port 8080
-  grace_period 1s
 }
 
 :8080 {
@@ -603,7 +650,7 @@ EOF
   handle_path /trojan-ws/* {
     reverse_proxy http://127.0.0.1:10001 {
       header_up Host {host}
-      header_up X-Real-IP {remote_ip}
+      header_up X-Real-IP {remote_host}
       header_up Connection "upgrade"
       header_up Upgrade "websocket"
       transport http {
@@ -615,7 +662,7 @@ EOF
   handle_path /vless-ws/* {
     reverse_proxy http://127.0.0.1:10002 {
       header_up Host {host}
-      header_up X-Real-IP {remote_ip}
+      header_up X-Real-IP {remote_host}
       header_up Connection "upgrade"
       header_up Upgrade "websocket"
       transport http {
@@ -631,8 +678,23 @@ EOF
 EOF
     cat > entrypoint.sh <<'EOF'
 #!/bin/sh
+set -e
+
+# Start Xray in background
 /usr/local/bin/xray run -c /etc/xray.json &
-sleep 3
+XRAY_PID=$!
+
+# Wait for Xray port to be ready — critical fix for Cloud Run!
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+  if nc -z 127.0.0.1 10001; then
+    echo "✅ Xray ready — starting Caddy..."
+    break
+  fi
+  echo "⏳ Waiting Xray port... ($i/15)"
+  sleep 1
+done
+
+# Start Caddy in foreground — must be last to keep container alive!
 exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
 EOF
     chmod +x entrypoint.sh
@@ -642,6 +704,7 @@ FROM alpine:3.20 AS builder
 RUN apk add --no-cache curl unzip ca-certificates
 RUN curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o xray.zip && unzip -q xray.zip xray geosite.dat geoip.dat && chmod +x xray
 FROM caddy:2-alpine
+RUN apk add --no-cache netcat-openbsd
 COPY --from=builder /xray /usr/local/bin/xray
 COPY --from=builder /geosite.dat /usr/local/share/xray/
 COPY --from=builder /geoip.dat /usr/local/share/xray/
