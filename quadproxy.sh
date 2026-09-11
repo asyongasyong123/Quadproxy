@@ -2,9 +2,10 @@
 set -euo pipefail
 
 # =========================================
-# 🚀 GCP-XRAY QUAD-PROXY ENGINE DEPLOYER 🚀
-# ✅ ENGINES: OPENRESTY, ENVOY, HAPROXY, CADDY ✅
-# 🇵🇭 BY: Con Fig 🇵🇭
+# 🚀 GCP-XRAY MULTI-ENGINE DEPLOYER
+# ✅ ENGINES: OPENRESTY, ENVOY, HAPROXY, CADDY
+# ✅ INTEGRATED DNS & ADBLOCK ROUTING
+# ✅ FLEXIBLE REGIONS & RESOURCE ALLOCATION
 # =========================================
 
 GREEN='\033[1;32m'
@@ -106,12 +107,12 @@ select_region() {
   echo "--- Asia Pacific ---"
   echo "5) asia-east1       (Taiwan 🇹🇼 — RECOMMENDED!)"
   echo "6) asia-southeast1  (Singapore 🇸🇬)"
-  echo "7) asia-northeast1  (Tokyo, Japan 🇯🇵)"
-  echo "8) asia-northeast3  (Seoul, South Korea 🇰🇷)"
+  echo "7) asia-northeast1   (Tokyo, Japan 🇯🇵)"
+  echo "8) asia-northeast3   (Seoul, South Korea 🇰🇷)"
   echo "9) asia-south1      (Mumbai, India 🇮🇳)"
   echo ""
   echo "--- Europe ---"
-  echo "10) europe-west1    (Belgium 🇧🇪)"
+  echo "10) europe-west1     (Belgium 🇧🇪)"
   echo "11) europe-west4    (Netherlands 🇳🇱)"
   echo "12) europe-west9    (Paris, France 🇫🇷)"
   echo ""
@@ -164,14 +165,14 @@ deploy_new_service() {
   echo "1) OpenResty          - [Standard / Highly Reliable] ✅"
   echo "2) Envoy Proxy        - [High Performance / Cloud Native]"
   echo "3) HAProxy            - [Ultra Low Latency / Lightweight]"
-  echo "4) Caddy              - [Modern, Clean & Fast]"
+  echo "4) Caddy Proxy        - [Modern / Automatic HTTPS / Simple & Fast]"
   while true; do
       read -p "Select Engine [1-4]: " ENGINE_CHOICE
       case $ENGINE_CHOICE in
           1) ENGINE="openresty"; DISPLAY_ENGINE="OpenResty"; echo -e "${GREEN}✅ Selected: OpenResty${NC}"; break ;;
           2) ENGINE="envoy"; DISPLAY_ENGINE="Envoy Proxy"; echo -e "${GREEN}✅ Selected: Envoy Proxy${NC}"; break ;;
           3) ENGINE="haproxy"; DISPLAY_ENGINE="HAProxy"; echo -e "${GREEN}✅ Selected: HAProxy${NC}"; break ;;
-          4) ENGINE="caddy"; DISPLAY_ENGINE="Caddy"; echo -e "${GREEN}✅ Selected: Caddy${NC}"; break ;;
+          4) ENGINE="caddy"; DISPLAY_ENGINE="Caddy Proxy"; echo -e "${GREEN}✅ Selected: Caddy Proxy${NC}"; break ;;
           *) echo -e "${RED}Enter 1, 2, 3, or 4 only${NC}" ;;
       esac
   done
@@ -183,59 +184,46 @@ deploy_new_service() {
   echo -e "\n${CYAN}=========================================${NC}"
   echo -e "${GREEN}      RESOURCE CONFIG MODE${NC}"
   echo -e "${CYAN}=========================================${NC}"
-  echo -e "${GREEN}1) AUTO PRESETS  |  (Instance-Based + Preset Scaling)${NC}"
-  echo -e "${YELLOW}2) MANUAL SETUP  |  (Custom Billing & Resources)${NC}"
+  echo -e "${GREEN}1) AUTO PRESETS  |  Recommended (Automatic Instance-Based)${NC}"
+  echo -e "${YELLOW}2) MANUAL SETUP  |  Full Memory & vCPU Range${NC}"
   while true; do
       read -p "Select Mode [1-2]: " RES_MODE
       case $RES_MODE in
           1)
+              echo -e "\n${CYAN}--- AUTO PRESETS ---${NC}"
+              echo "1) Basic:    1Gi RAM + 1 vCPU (Min: 1, Max: 3, Concurrency: 100)"
+              echo "2) Balanced: 2Gi RAM + 2 vCPU (Min: 1, Max: 5, Concurrency: 130) ✅"
+              echo "3) Turbo:    4Gi RAM + 4 vCPU (Min: 1, Max: 5, Concurrency: 200)"
+              read -p "Choose preset [1-3]: " AUTO_CHOICE
+              
+              # Force Instance-Based billing for Auto Mode
               BILLING_MODE="instance"
               BILLING_FLAG="--no-cpu-throttling"
 
-              echo -e "\n${CYAN}--- AUTO PRESETS ---${NC}"
-              echo "1) Basic:    1Gi RAM + 1 vCPU (Min: 1 | Max: 3 | Concurrency: 80)"
-              echo "2) Balanced: 2Gi RAM + 2 vCPU (Min: 1 | Max: 5 | Concurrency: 130)"
-              echo "3) Turbo:    4Gi RAM + 4 vCPU (Min: 1 | Max: 5 | Concurrency: 200)"
-              read -p "Choose preset [1-3]: " AUTO_CHOICE
               case $AUTO_CHOICE in
                   1) 
-                      MEMORY="1Gi"
-                      CPU="1"
-                      MIN_INST=1
-                      MAX_INST=3
-                      CONCURRENCY=80
-                      TIMEOUT=3600
-                      ;;
+                    MEMORY="1Gi"; CPU="1"
+                    MIN_INST=1; MAX_INST=3; CONCURRENCY=100; TIMEOUT=3600
+                    ;;
                   2) 
-                      MEMORY="2Gi"
-                      CPU="2"
-                      MIN_INST=1
-                      MAX_INST=5
-                      CONCURRENCY=130
-                      TIMEOUT=3600
-                      ;;
+                    MEMORY="2Gi"; CPU="2"
+                    MIN_INST=1; MAX_INST=5; CONCURRENCY=130; TIMEOUT=3600
+                    ;;
                   3) 
-                      MEMORY="4Gi"
-                      CPU="4"
-                      MIN_INST=1
-                      MAX_INST=5
-                      CONCURRENCY=200
-                      TIMEOUT=3600
-                      ;;
+                    MEMORY="4Gi"; CPU="4"
+                    MIN_INST=1; MAX_INST=5; CONCURRENCY=200; TIMEOUT=3600
+                    ;;
                   *) 
-                      echo -e "${YELLOW}Using Balanced preset default${NC}"
-                      MEMORY="2Gi"
-                      CPU="2"
-                      MIN_INST=1
-                      MAX_INST=5
-                      CONCURRENCY=130
-                      TIMEOUT=3600
-                      ;;
+                    MEMORY="2Gi"; CPU="2"
+                    MIN_INST=1; MAX_INST=5; CONCURRENCY=130; TIMEOUT=3600
+                    echo -e "${YELLOW}Using Balanced preset${NC}"
+                    ;;
               esac
               echo -e "${GREEN}✅ Applied Preset: $MEMORY | $CPU vCPU | Min: $MIN_INST | Max: $MAX_INST | Concurrency: $CONCURRENCY${NC}"
               break
               ;;
           2)
+              # Prompt for billing mode manually if manual setup
               echo -e "\n${CYAN}=========================================${NC}"
               echo -e "${GREEN}          BILLING MODE${NC}"
               echo -e "${CYAN}=========================================${NC}"
@@ -281,6 +269,7 @@ deploy_new_service() {
 
               echo -e "${GREEN}✅ Custom Selected: $MEMORY RAM | $CPU vCPU${NC}"
 
+              # Manual scaling configuration prompts
               echo -e "\n${CYAN}=========================================${NC}"
               echo -e "${GREEN}    PERFORMANCE & SCALING CONFIGURATION  ${NC}"
               echo -e "${CYAN}=========================================${NC}"
@@ -310,7 +299,7 @@ deploy_new_service() {
   clear
   echo ""
   echo -e "${CYAN}=========================================${NC}"
-  echo -e "${GREEN}🚀 GCP-XRAY DEPLOYER | QUAD-ENGINE SETUP${NC}"
+  echo -e "${GREEN}🚀 GCP-XRAY DEPLOYER | MULTI-ENGINE SETUP${NC}"
   echo -e "${CYAN}=========================================${NC}"
   echo -e "${GREEN}✅ Project:${NC} $PROJECT_ID"
   echo -e "${GREEN}✅ Region:${NC} $REGION"
@@ -401,17 +390,15 @@ http {
       return 200 '$DECOY_HTML';
     }
     location /trojan-ws {
-      proxy_pass http://127.0.0.1:10001; proxy_http_version 1.1;
-      proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "";
+      proxy_pass http://127.0.0.1:10001;
+      proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade";
       proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr;
-      proxy_buffering off; proxy_cache_bypass \$http_upgrade;
       proxy_read_timeout 3600s; proxy_send_timeout 3600s;
     }
     location /vless-ws {
-      proxy_pass http://127.0.0.1:10002; proxy_http_version 1.1;
-      proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "";
+      proxy_pass http://127.0.0.1:10002;
+      proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade";
       proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr;
-      proxy_buffering off; proxy_cache_bypass \$http_upgrade;
       proxy_read_timeout 3600s; proxy_send_timeout 3600s;
     }
   }
@@ -419,23 +406,8 @@ http {
 EOF
     cat > entrypoint.sh <<'EOF'
 #!/bin/sh
-set -e
-
-# Start Xray in background
 /usr/local/bin/xray run -c /etc/xray.json &
-XRAY_PID=$!
-
-# Wait for Xray port to be ready
-for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
-  if nc -z 127.0.0.1 10001; then
-    echo "✅ Xray ready on port 10001"
-    break
-  fi
-  echo "⏳ Waiting Xray... ($i/15)"
-  sleep 1
-done
-
-# Start OpenResty in foreground
+sleep 2
 exec /usr/local/openresty/bin/openresty -g 'daemon off;'
 EOF
     chmod +x entrypoint.sh
@@ -445,7 +417,6 @@ FROM alpine:3.20 AS builder
 RUN apk add --no-cache curl unzip ca-certificates
 RUN curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o xray.zip && unzip -q xray.zip xray geosite.dat geoip.dat && chmod +x xray
 FROM openresty/openresty:alpine-fat
-RUN apk add --no-cache netcat-openbsd
 COPY --from=builder /xray /usr/local/bin/xray
 COPY --from=builder /geosite.dat /usr/local/share/xray/
 COPY --from=builder /geoip.dat /usr/local/share/xray/
@@ -482,14 +453,14 @@ static_resources:
               - match: { prefix: "/health" }
                 direct_response: { status: 200, body: { inline_string: "OK\n" } }
               - match: { prefix: "/trojan-ws" }
-                route: { cluster: trojan_cluster, timeout: 3600s, auto_host_rewrite: true, upgrade_configs: [{ upgrade_type: "websocket" }] }
+                route: { cluster: trojan_cluster, timeout: 3600s, upgrade_configs: [{ upgrade_type: "websocket" }] }
               - match: { prefix: "/vless-ws" }
-                route: { cluster: vless_cluster, timeout: 3600s, auto_host_rewrite: true, upgrade_configs: [{ upgrade_type: "websocket" }] }
+                route: { cluster: vless_cluster, timeout: 3600s, upgrade_configs: [{ upgrade_type: "websocket" }] }
               - match: { prefix: "/" }
                 direct_response:
                   status: 200
                   body:
-                    inline_string: "$DECOY_HTML"
+                    inline_string: "System Operational"
           http_filters:
           - name: envoy.filters.http.router
             typed_config:
@@ -520,23 +491,8 @@ static_resources:
 EOF
     cat > entrypoint.sh <<'EOF'
 #!/bin/sh
-set -e
-
-# Start Xray in background
 /usr/local/bin/xray run -c /etc/xray.json &
-XRAY_PID=$!
-
-# Wait for Xray port to be ready
-for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
-  if nc -z 127.0.0.1 10001; then
-    echo "✅ Xray ready on port 10001"
-    break
-  fi
-  echo "⏳ Waiting Xray... ($i/15)"
-  sleep 1
-done
-
-# Start Envoy in foreground
+sleep 2
 exec envoy -c /etc/envoy.yaml
 EOF
     chmod +x entrypoint.sh
@@ -545,13 +501,12 @@ EOF
 FROM alpine:3.20 AS builder
 RUN apk add --no-cache curl unzip ca-certificates
 RUN curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o xray.zip && unzip -q xray.zip xray geosite.dat geoip.dat && chmod +x xray
-FROM envoyproxy/envoy:v1.31.0
-RUN apt-get update && apt-get install -y --no-install-recommends netcat-openbsd && rm -rf /var/lib/apt/lists/*
+FROM envoyproxy/envoy:v1.30-latest
 COPY --from=builder /xray /usr/local/bin/xray
 COPY --from=builder /geosite.dat /usr/local/share/xray/
 COPY --from=builder /geoip.dat /usr/local/share/xray/
 COPY config.json /etc/xray.json
-COPY envoy.yaml /etc/envoy/envoy.yaml
+COPY envoy.yaml /etc/envoy.yaml
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /usr/local/bin/xray /entrypoint.sh
 EXPOSE 8080
@@ -570,7 +525,6 @@ defaults
     timeout connect 10s
     timeout client 3600s
     timeout server 3600s
-    timeout tunnel 3600s
 
 frontend main
     bind *:8080
@@ -581,13 +535,13 @@ frontend main
     use_backend health_backend if is_health
     use_backend trojan_backend if is_trojan
     use_backend vless_backend if is_vless
-    default_backend decoy_backend
+    default_backend default_backend
 
 backend health_backend
     http-request return status 200 content-type "text/plain" string "OK\n"
 
-backend decoy_backend
-    http-request return status 200 content-type "text/html" string "$DECOY_HTML"
+backend default_backend
+    http-request return status 200 content-type "text/html" string '$DECOY_HTML'
 
 backend trojan_backend
     server xray1 127.0.0.1:10001
@@ -597,23 +551,8 @@ backend vless_backend
 EOF
     cat > entrypoint.sh <<'EOF'
 #!/bin/sh
-set -e
-
-# Start Xray in background
 /usr/local/bin/xray run -c /etc/xray.json &
-XRAY_PID=$!
-
-# Wait for Xray port to be ready
-for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
-  if nc -z 127.0.0.1 10001; then
-    echo "✅ Xray ready on port 10001"
-    break
-  fi
-  echo "⏳ Waiting Xray... ($i/15)"
-  sleep 1
-done
-
-# Start HAProxy in foreground
+sleep 2
 exec haproxy -f /usr/local/etc/haproxy/haproxy.cfg -db
 EOF
     chmod +x entrypoint.sh
@@ -623,7 +562,6 @@ FROM alpine:3.20 AS builder
 RUN apk add --no-cache curl unzip ca-certificates
 RUN curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o xray.zip && unzip -q xray.zip xray geosite.dat geoip.dat && chmod +x xray
 FROM haproxy:2.8-alpine
-RUN apk add --no-cache netcat-openbsd
 COPY --from=builder /xray /usr/local/bin/xray
 COPY --from=builder /geosite.dat /usr/local/share/xray/
 COPY --from=builder /geoip.dat /usr/local/share/xray/
@@ -637,65 +575,42 @@ ENTRYPOINT ["/entrypoint.sh"]
 EOF
 
   elif [ "$ENGINE" = "caddy" ]; then
-    cat > Caddyfile <<'EOF'
+    cat > Caddyfile <<EOF
 {
-  http_port 8080
+    admin off
+    http_port 8080
 }
 
 :8080 {
-  handle_path /health {
-    respond "OK\n" 200
-  }
-
-  handle_path /trojan-ws/* {
-    reverse_proxy http://127.0.0.1:10001 {
-      header_up Host {host}
-      header_up X-Real-IP {remote_host}
-      header_up Connection "upgrade"
-      header_up Upgrade "websocket"
-      transport http {
-        versions 1.1
-      }
+    handle /health {
+        respond "OK\n" 200
     }
-  }
 
-  handle_path /vless-ws/* {
-    reverse_proxy http://127.0.0.1:10002 {
-      header_up Host {host}
-      header_up X-Real-IP {remote_host}
-      header_up Connection "upgrade"
-      header_up Upgrade "websocket"
-      transport http {
-        versions 1.1
-      }
+    handle /trojan-ws* {
+        reverse_proxy 127.0.0.1:10001 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+        }
     }
-  }
 
-  handle /* {
-    respond "$DECOY_HTML" 200 text/html
-  }
+    handle /vless-ws* {
+        reverse_proxy 127.0.0.1:10002 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    handle {
+        header Content-Type text/html
+        respond \`$DECOY_HTML\` 200
+    }
 }
 EOF
     cat > entrypoint.sh <<'EOF'
 #!/bin/sh
-set -e
-
-# Start Xray in background
 /usr/local/bin/xray run -c /etc/xray.json &
-XRAY_PID=$!
-
-# Wait for Xray port to be ready — critical fix for Cloud Run!
-for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
-  if nc -z 127.0.0.1 10001; then
-    echo "✅ Xray ready — starting Caddy..."
-    break
-  fi
-  echo "⏳ Waiting Xray port... ($i/15)"
-  sleep 1
-done
-
-# Start Caddy in foreground — must be last to keep container alive!
-exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+sleep 2
+exec caddy run --config /etc/Caddyfile --adapter caddyfile
 EOF
     chmod +x entrypoint.sh
 
@@ -703,13 +618,12 @@ EOF
 FROM alpine:3.20 AS builder
 RUN apk add --no-cache curl unzip ca-certificates
 RUN curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o xray.zip && unzip -q xray.zip xray geosite.dat geoip.dat && chmod +x xray
-FROM caddy:2-alpine
-RUN apk add --no-cache netcat-openbsd
+FROM caddy:2.7-alpine
 COPY --from=builder /xray /usr/local/bin/xray
 COPY --from=builder /geosite.dat /usr/local/share/xray/
 COPY --from=builder /geoip.dat /usr/local/share/xray/
 COPY config.json /etc/xray.json
-COPY Caddyfile /etc/caddy/Caddyfile
+COPY Caddyfile /etc/Caddyfile
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /usr/local/bin/xray /entrypoint.sh
 EXPOSE 8080
@@ -718,15 +632,16 @@ EOF
   fi
 
   echo -e "${CYAN}🔨 Building image ($ENGINE engine)...${NC}"
-  gcloud builds submit --project="$PROJECT_ID" --tag gcr.io/"$PROJECT_ID"/"$CLOUD_RUN_SERVICE_NAME" . --quiet
+  gcloud builds submit --project="$PROJECT_ID" --tag gcr.io/$PROJECT_ID/$CLOUD_RUN_SERVICE_NAME . --quiet
 
   echo -e "${CYAN}🚀 Deploying to Cloud Run...${NC}"
   gcloud run deploy "$CLOUD_RUN_SERVICE_NAME" \
-    --image gcr.io/"$PROJECT_ID"/"$CLOUD_RUN_SERVICE_NAME" \
+    --image gcr.io/$PROJECT_ID/$CLOUD_RUN_SERVICE_NAME \
     --project="$PROJECT_ID" --platform managed --region "$REGION" --allow-unauthenticated \
     --port 8080 --memory "$MEMORY" --cpu "$CPU" --concurrency "$CONCURRENCY" \
     --timeout "$TIMEOUT" --min-instances "$MIN_INST" --max-instances "$MAX_INST" \
-    --session-affinity --execution-environment gen2 $BILLING_FLAG --cpu-boost --quiet
+    --session-affinity \
+    --execution-environment gen2 $BILLING_FLAG --cpu-boost --quiet
 
   CLOUD_RUN_URL=$(gcloud run services describe "$CLOUD_RUN_SERVICE_NAME" --project="$PROJECT_ID" --region="$REGION" --format='value(status.url)')
   DOMAIN=$(echo "$CLOUD_RUN_URL" | sed 's|https://||')
@@ -734,7 +649,7 @@ EOF
 
   clear
   echo -e "\n${CYAN}=========================================${NC}"
-  echo -e "${GREEN}✅ QUAD-ENGINE-GCP-XRAY DEPLOYMENT SUCCESS! (${ENGINE^^})${NC}"
+  echo -e "${GREEN}✅ MULTI-ENGINE-GCP-XRAY DEPLOYMENT SUCCESS! (${ENGINE^^})${NC}"
   echo -e "${CYAN}=========================================${NC}"
   echo -e "${GREEN}🔗 SHORT LINK:${NC} $CANONICAL_LINK"
   echo -e "${GREEN}🌐 NETMOD HOST:${NC} $DOMAIN"
@@ -746,9 +661,9 @@ EOF
 
 while true; do
   clear
-  echo "============================================"
-  echo "  GCP-XRAY QUAD-PROXY ENGINE DEPLOYER MENU  "
-  echo "============================================"
+  echo "======================================"
+  echo "  QUADRO-PROXY-GCP-XRAY DEPLOYER MENU    "
+  echo "======================================"
   echo "1) Deploy New GCP-XRAY Service"
   echo "2) List All Services & FULL DETAILS"
   echo "3) Exit Script"
@@ -758,7 +673,7 @@ while true; do
   case $MENU_CHOICE in
     1) deploy_new_service ;;
     2) list_deployed_services ;;
-    3) echo -e "\n👋 Goodbye!"; kill -9 $$ ;;
-    *) echo -e "${RED}❌ Enter 1/2/3 only${NC}"; sleep 1 ;;
+    3) echo -e "\n👋 Goodbye!"; exit 0 ;;
+    *) echo -e "${RED}❌ Enter 1/2/3 only${NC}"; sleep 2 ;;
   esac
 done
