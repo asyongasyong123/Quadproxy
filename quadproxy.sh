@@ -193,7 +193,7 @@ deploy_new_service() {
               echo -e "\n${CYAN}--- AUTO PRESETS ---${NC}"
               echo "1) Basic:    1Gi RAM + 1 vCPU (Min: 1, Max: 3, Concurrency: 100)"
               echo "2) Balanced: 2Gi RAM + 2 vCPU (Min: 1, Max: 5, Concurrency: 130) ✅"
-              echo "3) Turbo:    4Gi RAM + 4 vCPU (Min: 1, Max: 5, Concurrency: 200)"
+              echo "3) Turbo:    4Gi RAM + 4 vCPU (Min: 1, Max: 4, Concurrency: 200)"
               read -p "Choose preset [1-3]: " AUTO_CHOICE
               
               # Force Instance-Based billing for Auto Mode
@@ -211,7 +211,7 @@ deploy_new_service() {
                     ;;
                   3) 
                     MEMORY="4Gi"; CPU="4"
-                    MIN_INST=1; MAX_INST=5; CONCURRENCY=200; TIMEOUT=3600
+                    MIN_INST=1; MAX_INST=4; CONCURRENCY=200; TIMEOUT=3600
                     ;;
                   *) 
                     MEMORY="2Gi"; CPU="2"
@@ -662,7 +662,7 @@ EOF
 while true; do
   clear
   echo "======================================"
-  echo "  QUADRO-PROXY-GCP-XRAY DEPLOYER MENU    "
+  echo "QUADRO-PROXY-GCP-XRAY DEPLOYER MENU    "
   echo "======================================"
   echo "1) Deploy New GCP-XRAY Service"
   echo "2) List All Services & FULL DETAILS"
